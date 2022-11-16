@@ -1,97 +1,78 @@
-# noqa
-"""
-# Simple Tag
-
-```{figure} mpe_simple_tag.gif
-:width: 140px
-:name: simple_tag
-```
-
-This environment is part of the <a href='..'>MPE environments</a>. Please read that page first for general information.
-
-| Import             | `from pettingzoo.mpe import simple_tag_v2`                 |
-|--------------------|------------------------------------------------------------|
-| Actions            | Discrete/Continuous                                        |
-| Parallel API       | Yes                                                        |
-| Manual Control     | No                                                         |
-| Agents             | `agents= [adversary_0, adversary_1, adversary_2, agent_0]` |
-| Agents             | 4                                                          |
-| Action Shape       | (5)                                                        |
-| Action Values      | Discrete(5)/Box(0.0, 1.0, (50))                            |
-| Observation Shape  | (14),(16)                                                  |
-| Observation Values | (-inf,inf)                                                 |
-| State Shape        | (62,)                                                      |
-| State Values       | (-inf,inf)                                                 |
-
-
-This is a predator-prey environment. Good agents (green) are faster and receive a negative reward for being hit by adversaries (red) (-10 for each collision). Adversaries are slower and are rewarded for hitting good agents (+10 for each collision). Obstacles (large black circles) block the way. By
-default, there is 1 good agent, 3 adversaries and 2 obstacles.
-
-So that good agents don't run to infinity, they are also penalized for exiting the area by the following function:
-
-``` python
-def bound(x):
-      if x < 0.9:
-          return 0
-      if x < 1.0:
-          return (x - 0.9) * 10
-      return min(np.exp(2 * x - 2), 10)
-```
-
-Agent and adversary observations: `[self_vel, self_pos, landmark_rel_positions, other_agent_rel_positions, other_agent_velocities]`
-
-Agent and adversary action space: `[no_action, move_left, move_right, move_down, move_up]`
-
-### Arguments
-
-``` python
-simple_tag_v2.env(num_good=1, num_adversaries=3, num_obstacles=2, max_cycles=25, continuous_actions=False)
-```
-
-
-
-`num_good`:  number of good agents
-
-`num_adversaries`:  number of adversaries
-
-`num_obstacles`:  number of obstacles
-
-`max_cycles`:  number of frames (a step for each agent) until game terminates
-
-`continuous_actions`: Whether agent action spaces are discrete(default) or continuous
-
 """
 
+Environment implemented based on PettingZoo MPE
+
+"""
 import numpy as np
-from gymnasium.utils import EzPickle
-
 from pettingzoo.utils.conversions import parallel_wrapper_fn
-
-from .utils.core import Agent, Landmark, World
+# from .utils.core import Agent, Landmark, World
 from .utils.simple_env import SimpleEnv, make_env
 
+class EntityState:  # physical/external base state of all entities
+    def __init__(self):
+        self.p_pos = None
 
-class raw_env(SimpleEnv, EzPickle):
+class AgentState(EntityState):
+    def __init__(self):
+        super().__init__()
+
+class Entity:  # properties and state of physical world entity
+    def __init__(self):
+        # name
+        self.name = ""
+        # properties:
+        self.size = 0.050
+        # entity can move / be pushed
+        self.movable = False
+        # entity collides with others
+        self.collide = True
+        # color
+        self.color = None
+        # state
+        self.state = EntityState()
+
+class Prey(Entity):
+    def __init__(self):
+        super().__init__()
+        self.state = AgentState()
+        self.action = Action()
+        self.action_callback = None
+
+class Predator(Entity):
+    def __init__(self):
+        super().__init__()
+
+class Food(Entity):
+    def __init__(self):
+        super().__init__()
+
+class World:
+    def __init__(self):
+        self.preys = []
+        self.predators = []
+        self.foods = []
+        self.dt = 0.1
+    
+    @property
+    def entities(self):
+        return self.preys + self.predators + self.foods
+    
+    @property
+    def step(self):
+
+
+class raw_env(SimpleEnv):
     def __init__(
         self,
-        num_good=2,
-        num_adversaries=1,
-        num_obstacles=1,
+        num_prey=2,
+        num_predator=1,
+        num_food=1,
         max_cycles=25,
         continuous_actions=False,
         render_mode=None,
     ):
-        EzPickle.__init__(
-            self,
-            num_good,
-            num_adversaries,
-            num_obstacles,
-            max_cycles,
-            continuous_actions,
-            render_mode,
-        )
         scenario = Scenario()
-        world = scenario.make_world(num_good, num_adversaries, num_obstacles)
+        world = scenario.make_world(num_prey, num_predator, num_food)
         super().__init__(
             scenario=scenario,
             world=world,
@@ -105,28 +86,21 @@ env = make_env(raw_env)
 parallel_env = parallel_wrapper_fn(env)
 
 class Scenario():
-    def make_world(self, num_good=1, num_adversaries=3, num_obstacles=2):
+    def make_world(self, num_prey=2, num_predator=1, num_food=1):
         world = World()
         # set any world properties first
         world.dim_c = 2
-        num_good_agents = num_good
-        num_adversaries = num_adversaries
-        num_agents = num_adversaries + num_good_agents
-        num_landmarks = num_obstacles
+        num_agents = num_predator + num_prey
         # add agents
         world.agents = [Agent() for i in range(num_agents)]
         for i, agent in enumerate(world.agents):
-            agent.adversary = True if i < num_adversaries else False
-            base_name = "adversary" if agent.adversary else "agent"
-            base_index = i if i < num_adversaries else i - num_adversaries
+            agent.predate = True if i < num_predator else False
+            base_name = "predator" if agent.predate else "prey"
+            base_index = i if i < num_predator else i - num_predator
             agent.name = f"{base_name}_{base_index}"
-            agent.collide = True
-            agent.silent = True
             agent.size = 0.075 if agent.adversary else 0.05
-            agent.accel = 3.0 if agent.adversary else 4.0
-            agent.max_speed = 1.0 if agent.adversary else 1.3
         # add landmarks
-        world.landmarks = [Landmark() for i in range(num_landmarks)]
+        world.landmarks = [Landmark() for i in range(num_food)]
         for i, landmark in enumerate(world.landmarks):
             landmark.name = "landmark %d" % i
             landmark.collide = True

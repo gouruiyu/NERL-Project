@@ -163,6 +163,7 @@ class SimpleEnv(AECEnv):
     def _execute_world_step(self):
         # set action for each agent
         for i, agent in enumerate(self.world.agents):
+            import ipdb; ipdb.set_trace()
             action = self.current_actions[i]
             scenario_action = []
             if agent.movable:
