@@ -1,6 +1,0 @@
-Traceback (most recent call last):
-  File "/Users/ruiyugou/Documents/MSc/projects/NERL/testFair.py", line 68, in <module>
-    env.close()
-  File "/Users/ruiyugou/Documents/MSc/projects/NERL/envs/PreyArena.py", line 265, in close
-    if self.renderOn:
-AttributeError: 'PreyArena' object has no attribute 'renderOn'

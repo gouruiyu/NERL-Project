@@ -1,8 +1,0 @@
-Traceback (most recent call last):
-  File "/Users/ruiyugou/Documents/MSc/projects/NERL/testFair.py", line 43, in <module>
-    next_obs, rews, done, _= env.step(actions)
-  File "/Users/ruiyugou/Documents/MSc/projects/NERL/envs/PreyArena.py", line 192, in step
-    self.predator.update(self.agents)
-  File "/Users/ruiyugou/Documents/MSc/projects/NERL/envs/PreyArena.py", line 99, in update
-    rel_positions = np.array([prey.pos for prey in preys]) - self.pos
-KeyboardInterrupt

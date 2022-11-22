@@ -1,8 +1,0 @@
-Traceback (most recent call last):
-  File "/Users/ruiyugou/Documents/MSc/projects/NERL/testFair.py", line 43, in <module>
-    next_obs, rews, done, _= env.step(actions)
-  File "/Users/ruiyugou/Documents/MSc/projects/NERL/envs/PreyArena.py", line 200, in step
-    self.render()
-  File "/Users/ruiyugou/Documents/MSc/projects/NERL/envs/PreyArena.py", line 235, in render
-    observation = np.array(pygame.surfarray.pixels3d(self.screen))
-KeyboardInterrupt

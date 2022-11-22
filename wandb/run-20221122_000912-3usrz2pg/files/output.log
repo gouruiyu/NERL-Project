@@ -1,6 +1,0 @@
-Traceback (most recent call last):
-  File "/Users/ruiyugou/Documents/MSc/projects/NERL/testFair.py", line 71, in <module>
-    "chewed_on_time": np.avg(chewed_rates), # Percentage of times an agent can get chewed on through random action
-  File "/Users/ruiyugou/.pyenv/versions/nerl/lib/python3.9/site-packages/numpy/__init__.py", line 311, in __getattr__
-    raise AttributeError("module {!r} has no attribute "
-AttributeError: module 'numpy' has no attribute 'avg'

@@ -1,4 +1,0 @@
-Traceback (most recent call last):
-  File "/Users/ruiyugou/Documents/MSc/projects/NERL/testFair.py", line 53, in <module>
-    chewed_rate = chewed / (j+1)
-NameError: name 'j' is not defined

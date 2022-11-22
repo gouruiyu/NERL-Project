@@ -1,4 +1,0 @@
-Traceback (most recent call last):
-  File "/Users/ruiyugou/Documents/MSc/projects/NERL/testFair.py", line 36, in <module>
-    for i in range(args.eval_num_episodes):
-AttributeError: 'Namespace' object has no attribute 'eval_num_episodes'

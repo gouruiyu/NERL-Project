@@ -1,8 +1,0 @@
-Traceback (most recent call last):
-  File "/Users/ruiyugou/Documents/MSc/projects/NERL/testFair.py", line 24, in <module>
-    env = PreyArena(
-  File "/Users/ruiyugou/Documents/MSc/projects/NERL/envs/PreyArena.py", line 145, in __init__
-    self.agents = [Agent(name, AGENTS_POS_ORIGINAL[i], accel=agent_accel) for i, name in enumerate(agent_names)]
-  File "/Users/ruiyugou/Documents/MSc/projects/NERL/envs/PreyArena.py", line 145, in <listcomp>
-    self.agents = [Agent(name, AGENTS_POS_ORIGINAL[i], accel=agent_accel) for i, name in enumerate(agent_names)]
-TypeError: __init__() got multiple values for argument 'accel'
