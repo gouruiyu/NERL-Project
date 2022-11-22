@@ -1,6 +1,5 @@
 import numpy as np
 from envs.PreyArena import *
-from utils import get_args
 import wandb
 import time
 from tqdm import tqdm
