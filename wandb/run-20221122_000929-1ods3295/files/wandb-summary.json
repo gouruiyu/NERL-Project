@@ -1,0 +1,1 @@
+{"win_rates": {"R2D2": 40, "C-3PO": 60}, "food_eaten_freq": {"R2D2": 15, "C-3PO": 19}, "win_rate": 0.4, "food_eaten_rate": 0.15, "chewed_on_time": 0.6305676617050019, "_timestamp": 1669104625.11629, "_runtime": 55.33181810379028, "_step": 500, "_wandb": {"runtime": 54}}

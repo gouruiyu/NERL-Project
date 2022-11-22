@@ -13,20 +13,28 @@ PREDATOR_COLOR = pygame.Color(255, 127, 80) #FF7F50
 AGENT_COLOR = pygame.Color(100, 149, 237) # 6495ED
 BUFFER_SPACE = 5.
 
-PREDATOR_POS_ORIGINAL = np.array([300., 300.])
-FOOD_POS_ORIGINAL = np.array([300., 100.])
-AGENTS_POS_ORIGINAL = np.array([[100., 500.], [500., 500.]])
 
+PREDATOR_POS_ORIGINAL = np.array([300, 300.])
+PREDATOR_POS_ORIGINAL.flags["WRITEABLE"] = False
+FOOD_POS_ORIGINAL = np.array([300., 100.])
+FOOD_POS_ORIGINAL.flags["WRITEABLE"] = False
+AGENTS_POS_ORIGINAL = np.array([[100., 500.], [500., 500.]])
+AGENTS_POS_ORIGINAL.flags["WRITEABLE"] = False
 
 class Entity():
-    def __init__(self, name=None, pos=None, color=None, radius=0.):
+    def __init__(self, name=None, pos=None, noise=0., color=None, radius=0.):
         self.name = name
-        self.pos_original = pos
+        self.pos_original = pos # immutable
         # pos_noise = np.random.uniform(-BUFFER_SPACE, BUFFER_SPACE, size=2)
         # self.pos = pos + pos_noise
-        self.pos = pos
         self.color = color
         self.radius = radius
+        self.noise = noise
+        self.reset()
+    
+    def reset(self):
+        self.pos = np.copy(self.pos_original) # mutable
+        self.pos += self.noise * np.random.uniform(-1, 1, size=2)
         
     def _bounce(self):
         if self.pos[0] < self.radius:
@@ -41,16 +49,23 @@ class Entity():
         if self.pos[1] > WOLRD_WIDTH - self.radius:
             self.pos[1] = WOLRD_WIDTH - self.radius
             self.vel[1] *= -0.5
-
+            
 class Food(Entity):
-    def __init__(self, name="food", pos=FOOD_POS_ORIGINAL, color=FOOD_COLOR, radius=10.):
-        super().__init__(name, pos, color, radius)
+    def __init__(self, name="food", pos=FOOD_POS_ORIGINAL, noise=0., color=FOOD_COLOR, radius=10.):
+        super().__init__(name, pos, noise, color, radius)
 
 class Agent(Entity):
-    def __init__(self, name, pos=AGENTS_POS_ORIGINAL[0], color=AGENT_COLOR, radius=15.):
-        super().__init__(name, pos, color, radius)
-        self.accel = 4.
+    def __init__(self, name, pos=AGENTS_POS_ORIGINAL[0], noise=0., color=AGENT_COLOR, radius=15., accel=5.):
+        super().__init__(name, pos, noise, color, radius)
+        self.accel = accel
+        self.reset()
+    
+    def reset(self):
+        # self.pos = np.copy(self.pos_original) # mutable
+        # self.pos += self.noise * np.random.uniform(-1, 1, size=2)
+        super().reset()
         self.vel = np.zeros(2)
+        self._accumulate_rewards = 0
         
     def update(self, action):
         self.vel *= FRICTION_DECAY
@@ -71,10 +86,17 @@ class Agent(Entity):
         return 
         
 class Predator(Entity):
-    def __init__(self, name="predator", pos=PREDATOR_POS_ORIGINAL, color=PREDATOR_COLOR, radius=20.):
-        super().__init__(name, pos, color, radius)
-        self.accel = 5.
+    def __init__(self, name="predator", pos=PREDATOR_POS_ORIGINAL, noise=0., color=PREDATOR_COLOR, radius=20., accel=4.,):
+        super().__init__(name, pos, noise, color, radius)
+        self.accel = accel
         self.vel = np.zeros(2)
+    
+    def reset(self):
+        # self.pos = np.copy(self.pos_original) # mutable
+        # self.pos += self.noise * np.random.uniform(-1, 1, size=2)
+        super().reset()
+        self.vel = np.zeros(2)
+        self._accumulate_rewards = 0
     
     def update(self, preys):
         """
@@ -83,10 +105,11 @@ class Predator(Entity):
         """
         rel_positions = np.array([prey.pos for prey in preys]) - self.pos
         closest = np.argmin(np.linalg.norm(rel_positions, axis=1))
-        print(f"Predator: I am chasing {preys[closest].name}!")
-        # apply accelration in the direction of the closest prey
+        # print(f"Predator: I am chasing {preys[closest].name}!")
+        # apply accelration in the direction of the closest prey inverse to the distance
         self.vel *= FRICTION_DECAY
         self.vel += self.accel * rel_positions[closest] / np.linalg.norm(rel_positions[closest])
+        # self.vel += self.accel * rel_positions[closest] / np.sum(np.abs(rel_positions[closest]))
         self.pos += self.vel
         self._bounce()
         return
@@ -100,26 +123,36 @@ class PreyArena(ParallelEnv):
     
     def __init__(
         self,
-        max_cycles=100000,
+        max_cycles=1000,
         render_mode=None,
-        agent_names=["R2D2", "C-3PO"]
+        agent_names=["R2D2", "C-3PO"],
+        agent_accel=5.,
+        predator_accel=4.,
+        noise_regulator=0.
         ) -> None:
         super().__init__()
         
         # rendering options
         self.render_mode = render_mode
-        pygame.init()
-        self.viewer = None
-        self.width = WOLRD_WIDTH
-        self.height = WOLRD_WIDTH
-        self.screen = pygame.Surface((self.width, self.height))
         self.renderOn = False
+        if render_mode is not None:
+            pygame.init()
+            self.viewer = None
+            self.width = WOLRD_WIDTH
+            self.height = WOLRD_WIDTH
+            self.screen = pygame.Surface((self.width, self.height))
         
-        # Assumed deterministic envivornment for now: 
         #  Stochasticity sources: food respawn location
+        self.noise_regulator = noise_regulator
         
         self.max_cycles = max_cycles
+        
+        # Create entities
         self.agent_names = agent_names
+        self.predator = Predator(noise=self.noise_regulator, accel=predator_accel)
+        self.food = Food(noise=self.noise_regulator)
+        self.agents = [Agent(name, pos=AGENTS_POS_ORIGINAL[i], noise=self.noise_regulator, accel=agent_accel) for i, name in enumerate(agent_names)]
+        self.entities = self.agents + [self.food, self.predator] # FIXME: decouple the order restriction
         self.reset()
         self.dt = 1 # simulation timestep
         
@@ -132,15 +165,17 @@ class PreyArena(ParallelEnv):
         
     def _collide(self, idx1, idx2):
         """Check if two entities have collided."""
-        return self.dm[idx1, idx2] < (self.radius[idx1] + self.radius[idx2])
+        return self.dm[idx1, idx2] < (self.entities[idx1].radius + self.entities[idx2].radius)
         
     def reset(self, seed=None, return_info=False, options=None):
         # reset entities' location
-        np.random.seed(seed)
-        self.predator = Predator()
-        self.food = Food()
-        self.agents = [Agent(name, AGENTS_POS_ORIGINAL[i]) for i, name in enumerate(self.agent_names)]
-        self.entities = self.agents + [self.food, self.predator]
+        # np.random.seed(seed)
+        self.predator.reset()
+        self.food.reset()
+        for agent in self.agents:
+            agent.reset()
+        self.timestep = 0
+        self.terminate = False
         return
     
     def global_state(self):
@@ -166,9 +201,27 @@ class PreyArena(ParallelEnv):
         for i, agent in enumerate(self.agents):
             agent.update(actions[i])
         self._update_dm()
+        rews = self._cal_reward()
+        self.timestep += 1
+        if self.timestep >= self.max_cycles:
+            self.terminate = True
         if self.render_mode == "human":
             self.render()
-        
+        return self.observation(), rews, self.terminate, self.global_state()
+            
+    def _cal_reward(self):
+        rews = np.zeros(len(self.agents))
+        for i, agent in enumerate(self.agents):
+            if self._collide(i, -1):
+                rews[i] -= 5
+                agent._accumulate_rewards -= 5
+                # print(f"Predator is chewing {agent.name}!")
+            if self._collide(i, -2):
+                rews[i] += 100
+                agent._accumulate_rewards += 100
+                # print(f"{agent.name} eats food!")
+                self.terminate = True
+        return rews
         
     def observation(self):
         """
