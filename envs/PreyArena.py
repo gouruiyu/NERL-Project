@@ -7,7 +7,7 @@ import torch
 
 WOLRD_WIDTH = 600
 FRICTION_DECAY = 0.9
-BACKGROUND_COLOR = pygame.Color(242, 215, 213)
+BACKGROUND_COLOR = pygame.Color(0, 0, 0)
 FOOD_COLOR = pygame.Color(159, 226, 191) #9FE2BF
 PREDATOR_COLOR = pygame.Color(255, 127, 80) #FF7F50
 AGENT_COLOR = pygame.Color(100, 149, 237) # 6495ED
@@ -127,8 +127,8 @@ class PreyArena(ParallelEnv):
         render_mode=None,
         agent_names=["R2D2", "C-3PO"],
         agent_accel=5.,
-        predator_accel=4.,
-        noise_regulator=0.
+        predator_accel=3.,
+        noise_regulator=0.1
         ) -> None:
         super().__init__()
         
@@ -176,7 +176,8 @@ class PreyArena(ParallelEnv):
             agent.reset()
         self.timestep = 0
         self.terminate = False
-        return
+        self._update_dm()
+        return self.observation_array(), self._cal_reward(), self.terminate, self.global_state()
     
     def global_state(self):
         """
@@ -205,9 +206,9 @@ class PreyArena(ParallelEnv):
         self.timestep += 1
         if self.timestep >= self.max_cycles:
             self.terminate = True
-        if self.render_mode == "human":
-            self.render()
-        return self.observation(), rews, self.terminate, self.global_state()
+        # if self.render_mode == "human":
+        #     self.render()
+        return self.observation_array(), rews, self.terminate, self.global_state()
             
     def _cal_reward(self):
         rews = np.zeros(len(self.agents))
@@ -223,7 +224,7 @@ class PreyArena(ParallelEnv):
                 self.terminate = True
         return rews
         
-    def observation(self):
+    def observation_dict(self):
         """
         returns a dict of observations for all agents
         each observation is a flattened array of relative positions of [food_pos, predator_pos, predator_vel, the_other_agent, the_other_agent_vel]
@@ -233,6 +234,13 @@ class PreyArena(ParallelEnv):
             obs[agent.name] = np.concatenate([self.food.pos - agent.pos, self.predator.pos - agent.pos, self.predator.vel, self.agents[1-i].pos - agent.pos, self.agents[1-i].vel])
             assert obs[agent.name].shape == (10,)
         return obs
+
+    def observation_array(self):
+        """
+        returns an array of observations for all agents
+        each observation is a flattened array of relative positions of [food_pos, predator_pos, predator_vel, the_other_agent, the_other_agent_vel]
+        """
+        return np.array([np.concatenate([self.food.pos - agent.pos, self.predator.pos - agent.pos, self.predator.vel, self.agents[1-i].pos - agent.pos, self.agents[1-i].vel]) for i, agent in enumerate(self.agents)])
     
     def _enable_render(self, mode="human"):
         if not self.renderOn and mode == "human":
@@ -240,10 +248,12 @@ class PreyArena(ParallelEnv):
             self.renderOn = True
     
     def render(self):
+        if self.render_mode is None:
+            return 
         self._enable_render(self.render_mode)
+        self.draw()
         observation = np.array(pygame.surfarray.pixels3d(self.screen))
         if self.render_mode == "human":
-            self.draw()
             pygame.display.flip() # TODO: ? pyglet?
         return (
             np.transpose(observation, (1, 0, 2))
