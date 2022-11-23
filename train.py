@@ -15,7 +15,7 @@ if __name__ == "__main__":
     # Environment parameters
     parser.add_argument('--predator_acceleration', type=float, default=0.5)
     # parser.add_argument('--predator_range', type=float, default=0.) # Provide denser reward from the predator
-    parser.add_argument('--max_cycles', type=int, default=1000)
+    parser.add_argument('--max_cycles', type=int, default=500)
     # Agent parameters
     parser.add_argument('--hidden_size', type=int, default=16)
     parser.add_argument('--n_hidden_layer', type=int, default=1)
@@ -41,8 +41,8 @@ if __name__ == "__main__":
         config=vars(args)
     )
     
-    GIF_FREQ = int(args.n_tournament / 25)
-    SAVE_FREQ = 1000
+    GIF_FREQ = int(args.n_tournament / 4)
+    SAVE_FREQ = 100
     
     ############################### Training ###############################
 
@@ -76,7 +76,8 @@ if __name__ == "__main__":
             # frame_buffer = [Image.fromarray(frame) for frame in frame_buffer]
             # frame_buffer[0].save(gif_path, save_all=True, append_images=frame_buffer[1:], duration=20, loop=0)
             wandb.log(
-                {"video": wandb.Video(np.transpose(np.array(frame_buffer), (0, 3, 1, 2)), fps=30, format="gif")})
+                {"video": wandb.Video(np.transpose(np.array(frame_buffer), (0, 3, 1, 2)), fps=30, format="gif")},
+                step=tournament_idx)
         accumulated_rewards_orig = accumulated_rewards.copy()
         accumulated_rewards[0] = (1-args.altruism) * accumulated_rewards[0] + args.altruism * accumulated_rewards[1]
         accumulated_rewards[1] = (1-args.altruism) * accumulated_rewards[1] + args.altruism * accumulated_rewards[0]
@@ -92,6 +93,7 @@ if __name__ == "__main__":
             render=False
             wins += acc_adj[0] > acc_adj[1]
             accs.append([acc_adj, acc_orig, episode_len])
+            # print(f"Finished round {i+1}/{n_rounds} of tournament {tournament_idx}")
         return wins - n_rounds/2, accs
         
     population = [MlpPolicy(state_dim=obs_dim, action_dim=action_dim, hidden_size=args.hidden_size, n_hidden_layer=args.n_hidden_layer, init=args.init, activation=args.activation) for _ in range(args.n_population)]
@@ -129,7 +131,7 @@ if __name__ == "__main__":
                 "reward_self_play_with_altruism_adaption": np.mean([acc[1][0] for acc in accs_self]),
                 "reward_baseline": np.mean([acc[0][0] for acc in accs_bsln]),
                 "reward_baseline_with_altruism_adaption": np.mean([acc[1][0] for acc in accs_bsln])
-            }, step=tournament)
+            }, step=tournament, commit=True)
             
             
     # Save run information

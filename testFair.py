@@ -72,7 +72,7 @@ if __name__ == "__main__":
             "win_rate": win_rates[0] / args.eval_num_episodes,
             "food_eaten_rate": food_eaten_freq[0] / args.eval_num_episodes, # Percentage of times an agent can get food through random action
             "chewed_on_time": np.mean(chewed_rates), # Percentage of times an agent can get chewed on through random action
-        }, step=episode_length)
+        }, step=episode_length, commit=True)
     
     # print(f"Game over!\n win_rate: {win_rates} \n food_eaten_freq: {food_eaten_freq}")
     env.close()
