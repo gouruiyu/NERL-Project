@@ -2,7 +2,7 @@ from utils import GridSearch
 
 main_file = 'train.py'
 args = {'max_cycles': [100, 200, 500], 
-        'hidden_layer': [1, 2],
+        'n_hidden_layer': [1, 2],
         'n_rounds': [4, 8],
         'mutation_std': [0.0001, 0.01, 0.1]
 }
