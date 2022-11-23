@@ -5,7 +5,7 @@ import pygame
 import torch
 
 
-WOLRD_WIDTH = 600
+WORLD_WIDTH = 600
 FRICTION_DECAY = 0.9
 BACKGROUND_COLOR = pygame.Color(0, 0, 0)
 FOOD_COLOR = pygame.Color(159, 226, 191) #9FE2BF
@@ -40,14 +40,14 @@ class Entity():
         if self.pos[0] < self.radius:
             self.pos[0] = self.radius
             self.vel[0] *= -0.5
-        if self.pos[0] > WOLRD_WIDTH - self.radius:
-            self.pos[0] = WOLRD_WIDTH - self.radius
+        if self.pos[0] > WORLD_WIDTH - self.radius:
+            self.pos[0] = WORLD_WIDTH - self.radius
             self.vel[0] *= -0.5
         if self.pos[1] < self.radius:
             self.pos[1] = self.radius
             self.vel[1] *= -0.5
-        if self.pos[1] > WOLRD_WIDTH - self.radius:
-            self.pos[1] = WOLRD_WIDTH - self.radius
+        if self.pos[1] > WORLD_WIDTH - self.radius:
+            self.pos[1] = WORLD_WIDTH - self.radius
             self.vel[1] *= -0.5
             
 class Food(Entity):
@@ -129,22 +129,23 @@ class PreyArena(ParallelEnv):
         agent_accel=5.,
         predator_accel=3.,
         noise_regulator=0.1
+        # denser_reward=False
         ) -> None:
         super().__init__()
         
         # rendering options
         self.render_mode = render_mode
         self.renderOn = False
-        if render_mode is not None:
-            pygame.init()
-            self.viewer = None
-            self.width = WOLRD_WIDTH
-            self.height = WOLRD_WIDTH
-            self.screen = pygame.Surface((self.width, self.height))
+        
+        pygame.init()
+        self.viewer = None
+        self.width = WORLD_WIDTH
+        self.height = WORLD_WIDTH
+        self.screen = pygame.Surface((self.width, self.height))
         
         #  Stochasticity sources: food respawn location
         self.noise_regulator = noise_regulator
-        
+        # self.denser_reward = denser_reward
         self.max_cycles = max_cycles
         
         # Create entities
@@ -224,41 +225,52 @@ class PreyArena(ParallelEnv):
                 self.terminate = True
         return rews
         
-    def observation_dict(self):
-        """
-        returns a dict of observations for all agents
-        each observation is a flattened array of relative positions of [food_pos, predator_pos, predator_vel, the_other_agent, the_other_agent_vel]
-        """
-        obs = {}
-        for i, agent in enumerate(self.agents):
-            obs[agent.name] = np.concatenate([self.food.pos - agent.pos, self.predator.pos - agent.pos, self.predator.vel, self.agents[1-i].pos - agent.pos, self.agents[1-i].vel])
-            assert obs[agent.name].shape == (10,)
-        return obs
+    # def observation_dict(self):
+    #     """
+    #     returns a dict of observations for all agents
+    #     each observation is a flattened array of relative positions of [food_pos, predator_pos, predator_vel, the_other_agent, the_other_agent_vel]
+    #     """
+    #     obs = {}
+    #     for i, agent in enumerate(self.agents):
+    #         obs[agent.name] = np.concatenate([self.food.pos - agent.pos, self.predator.pos - agent.pos, self.predator.vel, self.agents[1-i].pos - agent.pos, self.agents[1-i].vel])
+    #         assert obs[agent.name].shape == (10,)
+    #     return obs
 
     def observation_array(self):
         """
         returns an array of observations for all agents
         each observation is a flattened array of relative positions of [food_pos, predator_pos, predator_vel, the_other_agent, the_other_agent_vel]
         """
-        return np.array([np.concatenate([self.food.pos - agent.pos, self.predator.pos - agent.pos, self.predator.vel, self.agents[1-i].pos - agent.pos, self.agents[1-i].vel]) for i, agent in enumerate(self.agents)])
+        return np.array([np.concatenate([self.food.pos - agent.pos, 
+                                         self.predator.pos - agent.pos, 
+                                         self.predator.vel, 
+                                         self.agents[1-i].pos - agent.pos, 
+                                         self.agents[1-i].vel,
+                                         agent.pos,
+                                         np.array([WORLD_WIDTH, WORLD_WIDTH]) - agent.pos]) 
+                         for i, agent in enumerate(self.agents)])
+        
+    def observation_dim(self):
+        return 14
     
-    def _enable_render(self, mode="human"):
-        if not self.renderOn and mode == "human":
+    def action_dim(self):
+        return 5
+    
+    def _enable_render(self):
+        if not self.renderOn and self.render_mode == "human":
             self.screen = pygame.display.set_mode(self.screen.get_size())
             self.renderOn = True
     
     def render(self):
-        if self.render_mode is None:
-            return 
-        self._enable_render(self.render_mode)
+        # if self.render_mode is None:
+        #     return 
+        self._enable_render()
         self.draw()
         observation = np.array(pygame.surfarray.pixels3d(self.screen))
         if self.render_mode == "human":
             pygame.display.flip() # TODO: ? pyglet?
         return (
             np.transpose(observation, (1, 0, 2))
-            if self.render_mode == "rgb_array"
-            else None
         )
         
     def draw(self):

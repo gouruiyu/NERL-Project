@@ -8,3 +8,6 @@ __pycache__
 logs
 summary*
 run*
+wandb*
+results*
+results

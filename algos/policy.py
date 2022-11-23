@@ -8,58 +8,57 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Categorical
 
+class RandomBaselinePolicy(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+    
+    def act(self, obs):
+        return np.random.randint(0, 5)
+
 
 class MlpPolicy(nn.Module):
     def __init__(self, state_dim, action_dim, n_hidden_layer, hidden_size, init, activation='relu', backprop=False):
         super(MlpPolicy, self).__init__()
-        # state space dimension
-        self.state_dim = state_dim
-        # action space dimension
-        self.action_dim = action_dim
-        # number of hidden layers
-        self.n_hidden_layer = n_hidden_layer
-        # size of hidden layers
-        self.hidden_size = hidden_size
-        # activation function
         if activation == 'relu':
-            self.activation = F.relu
+            activation = nn.ReLU
         elif activation == 'tanh':
-            self.activation = F.tanh
+            activation = nn.Tanh
         elif activation == 'sigmoid':
-            self.activation = F.sigmoid
+            activation = nn.Sigmoid
         else:
             raise NotImplementedError
-        # input layer
-        self.input_layer = nn.Linear(self.state_dim, self.hidden_size)
-        # hidden layers
-        self.hidden_layers = nn.ModuleList([nn.Linear(self.hidden_size, self.hidden_size) for i in range(self.n_hidden_layer)])
-        # output layer
-        self.output_layer = nn.Linear(self.hidden_size, self.action_dim)
-        # action & reward memory
-        self.action_memory = []
-        self.reward_memory = []
-        # whether to backpropagate or not
-        self.backprop = backprop
-        if not self.backprop:
-            self.eval()
+        self.layers = nn.ModuleList()
+        self.layers.append(nn.Linear(state_dim, hidden_size))
+        self.layers.append(activation())
+        for _ in range(n_hidden_layer):
+            self.layers.append(nn.Linear(hidden_size, hidden_size))
+            self.layers.append(activation())
+        self.layers.append(nn.Linear(hidden_size, action_dim))
         
         # Xavier initialization
-        for m in self.modules():
+        for m in self.layers:
             if isinstance(m, nn.Linear):
                 if init == 'xavier_uniform':
                     nn.init.xavier_uniform_(m.weight)
                 elif init == 'xavier_normal':
                     nn.init.xavier_normal_(m.weight)
                 nn.init.zeros_(m.bias)
-    
-    def forward(self, state: np.ndarray):
+            
+        # freeze weights
+        if not backprop:
+            for param in self.parameters():
+                param.requires_grad = False
+                
+    def add_noise(self, std=0.1):
+        for param in self.parameters():
+            param.data += torch.randn(param.data.size()) * std
+            
+    def forward(self, x: np.ndarray):
+        x = torch.from_numpy(x).float()
         # forward pass
-        state = torch.from_numpy(state).float()
-        x = self.activation(self.input_layer(state))
-        for i in range(self.n_hidden_layer):
-            x = self.activation(self.hidden_layers[i](x))
-        x = self.output_layer(x)
-        return F.softmax(x, dim=1)
+        for layer in self.layers:
+            x = layer(x)
+        return F.softmax(x, dim=-1)
 
     def act(self, states, deterministic=False):
         action_probs = self.forward(states)
@@ -70,3 +69,6 @@ class MlpPolicy(nn.Module):
             actions = dist.sample()
         # actions = np.argmax(self.forward(states).detach().numpy(), axis=1)
         return actions.detach().numpy()
+    
+    def save(self, path):
+        torch.save(self.state_dict(), path)
