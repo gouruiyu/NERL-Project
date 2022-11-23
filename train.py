@@ -22,7 +22,7 @@ if __name__ == "__main__":
     parser.add_argument('--init', type=str, default='xavier_uniform')
     parser.add_argument('--activation', type=str, default='relu')
     # Training parameters
-    parser.add_argument('--n_tournament', type=int, default=500000)
+    parser.add_argument('--n_tournament', type=int, default=25000)
     parser.add_argument('--n_rounds', type=int, default=4)
     parser.add_argument('--n_population', type=int, default=100)
     parser.add_argument('--mutation_std', type=float, default=0.1)
@@ -41,8 +41,8 @@ if __name__ == "__main__":
         config=vars(args)
     )
     
-    GIF_FREQ = int(args.n_tournament / 4)
     SAVE_FREQ = 100
+    GIF_FREQ = int(args.n_tournament / 4)
     
     ############################### Training ###############################
 
@@ -56,7 +56,7 @@ if __name__ == "__main__":
     action_dim = env.action_dim()
     obs_dim = env.observation_dim()
     
-    def match(env, policy1, policy2, tournament_idx, idx, render=False):
+    def match(env, policy1, policy2, tournament_idx, idx, gif_name=None, render=False):
         obs, rews, done, _ = env.reset()
         done = False
         accumulated_rewards = np.zeros(2)
@@ -76,24 +76,24 @@ if __name__ == "__main__":
             # frame_buffer = [Image.fromarray(frame) for frame in frame_buffer]
             # frame_buffer[0].save(gif_path, save_all=True, append_images=frame_buffer[1:], duration=20, loop=0)
             wandb.log(
-                {"video": wandb.Video(np.transpose(np.array(frame_buffer), (0, 3, 1, 2)), fps=30, format="gif")},
-                step=tournament_idx)
+                {f"{gif_name}_gif": wandb.Video(np.transpose(np.array(frame_buffer), (0, 3, 1, 2)), fps=30, format="gif")},
+                step=tournament_idx, commit=False)
         accumulated_rewards_orig = accumulated_rewards.copy()
         accumulated_rewards[0] = (1-args.altruism) * accumulated_rewards[0] + args.altruism * accumulated_rewards[1]
         accumulated_rewards[1] = (1-args.altruism) * accumulated_rewards[1] + args.altruism * accumulated_rewards[0]
         return accumulated_rewards, accumulated_rewards_orig, timestep
     
-    def rollout(env, policy1, policy2, tournament_idx, n_rounds=args.n_rounds):
+    def rollout(env, policy1, policy2, tournament_idx, n_rounds=args.n_rounds, gif_name=None, render=False):
         """ return >0 if policy1 wins, <0 if policy2 wins, 0 if tie """
         wins = 0
         accs = []
-        render = tournament_idx % GIF_FREQ == 0
         for i in range(n_rounds):
-            acc_adj, acc_orig, episode_len = match(env, policy1, policy2, tournament_idx, i, render=render)
-            render=False
+            if i == 0:
+                acc_adj, acc_orig, episode_len = match(env, policy1, policy2, tournament_idx, i, gif_name=gif_name, render=render)
+            else:
+                acc_adj, acc_orig, episode_len = match(env, policy1, policy2, tournament_idx, i, gif_name=None, render=False)
             wins += acc_adj[0] > acc_adj[1]
             accs.append([acc_adj, acc_orig, episode_len])
-            # print(f"Finished round {i+1}/{n_rounds} of tournament {tournament_idx}")
         return wins - n_rounds/2, accs
         
     population = [MlpPolicy(state_dim=obs_dim, action_dim=action_dim, hidden_size=args.hidden_size, n_hidden_layer=args.n_hidden_layer, init=args.init, activation=args.activation) for _ in range(args.n_population)]
@@ -122,10 +122,11 @@ if __name__ == "__main__":
         if tournament % SAVE_FREQ == 0:
             record_holder = np.argmax(winning_streak)
             population[record_holder].save(f"{log_dir}/best_policy_{tournament}.pt")
+            render = tournament % GIF_FREQ == 0
             # self-play evaluation
-            _, accs_self = rollout(env, population[record_holder], population[record_holder], tournament_idx=GIF_FREQ+1, n_rounds=2)
+            _, accs_self = rollout(env, population[record_holder], population[record_holder], tournament_idx=tournament, n_rounds=2, gif_name="self_play", render=render)
             # baseline evaluation
-            _, accs_bsln = rollout(env, population[record_holder], baseline, tournament_idx=GIF_FREQ+1, n_rounds=2)
+            _, accs_bsln = rollout(env, population[record_holder], baseline, tournament_idx=tournament, n_rounds=2, gif_name="baseline", render=render)
             wandb.log({
                 "reward_self_play": np.mean([acc[0][0] for acc in accs_self]),
                 "reward_self_play_with_altruism_adaption": np.mean([acc[1][0] for acc in accs_self]),

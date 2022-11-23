@@ -178,7 +178,9 @@ class PreyArena(ParallelEnv):
         self.timestep = 0
         self.terminate = False
         self._update_dm()
-        return self.observation_array(), self._cal_reward(), self.terminate, self.global_state()
+        # return self.observation_array(), self._cal_reward(), self.terminate, self.global_state()
+        return self.observation_array(), self._cal_reward(), self.terminate, None
+    
     
     def global_state(self):
         """
@@ -209,7 +211,7 @@ class PreyArena(ParallelEnv):
             self.terminate = True
         # if self.render_mode == "human":
         #     self.render()
-        return self.observation_array(), rews, self.terminate, self.global_state()
+        return self.observation_array(), rews, self.terminate, None
             
     def _cal_reward(self):
         rews = np.zeros(len(self.agents))
