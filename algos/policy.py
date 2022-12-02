@@ -42,6 +42,10 @@ class MlpPolicy(nn.Module):
                     nn.init.xavier_uniform_(m.weight)
                 elif init == 'xavier_normal':
                     nn.init.xavier_normal_(m.weight)
+                elif init == 'kaiming_uniform':
+                    nn.init.kaiming_uniform_(m.weight)
+                elif init == 'kaiming_normal':
+                    nn.init.kaiming_normal_(m.weight)
                 nn.init.zeros_(m.bias)
             
         # freeze weights
@@ -60,12 +64,12 @@ class MlpPolicy(nn.Module):
             x = layer(x)
         return F.softmax(x, dim=-1)
 
-    def act(self, states, deterministic=False):
+    def act(self, states, deterministic=True):
         action_probs = self.forward(states)
-        dist = Categorical(action_probs)
         if deterministic:
-            actions = dist.mode()
+            actions = torch.argmax(action_probs) # FIXME: does not work for batch, refactor
         else:
+            dist = Categorical(action_probs)
             actions = dist.sample()
         # actions = np.argmax(self.forward(states).detach().numpy(), axis=1)
         return actions.detach().numpy()
