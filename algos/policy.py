@@ -17,7 +17,7 @@ class RandomBaselinePolicy(nn.Module):
 
 
 class MlpPolicy(nn.Module):
-    def __init__(self, state_dim, action_dim, n_hidden_layer, hidden_size, init, activation='relu', backprop=False):
+    def __init__(self, state_dim, action_dim, n_hidden_layer, hidden_size, init, activation='tanh', backprop=False):
         super(MlpPolicy, self).__init__()
         if activation == 'relu':
             activation = nn.ReLU

@@ -4,11 +4,12 @@
 from utils import GridSearch
 
 main_file = 'train_ne.py'
-args = {'eat_predation_ratio': [100, 20, 1],
-        'predator_acceleration': [10, 5],
-        'altruism':[0, 0.5, 0.7]
+args = {'eat_predation_ratio': [20],
+        'predator_acceleration': [5],
+        'altruism':[0, 0.25, 0.5, 0.75, 1],
+        'expr_name': ['different_prosociality'],
 }
 
 # -------- create GridSearch object and run -------- #
-myGridSearch = GridSearch(main_file, args, num_process=18)
+myGridSearch = GridSearch(main_file, args, num_process=5)
 myGridSearch.run()

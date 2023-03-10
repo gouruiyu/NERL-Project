@@ -11,7 +11,7 @@ Version changelog:
 """
 
 
-WORLD_WIDTH = 600
+WORLD_WIDTH = 300
 FRICTION_DECAY = 0.9
 BACKGROUND_COLOR = pygame.Color(0, 0, 0)
 FOOD_COLOR = pygame.Color(159, 226, 191) #9FE2BF
@@ -20,11 +20,11 @@ AGENT_COLOR = pygame.Color(100, 149, 237) # 6495ED
 BUFFER_SPACE = 5.
 
 
-PREDATOR_POS_ORIGINAL = np.array([300, 300.])
+PREDATOR_POS_ORIGINAL = np.array([150, 150.])
 PREDATOR_POS_ORIGINAL.flags["WRITEABLE"] = False
-FOOD_POS_ORIGINAL = np.array([300., 100.])
+FOOD_POS_ORIGINAL = np.array([150., 50.])
 FOOD_POS_ORIGINAL.flags["WRITEABLE"] = False
-AGENTS_POS_ORIGINAL = np.array([[100., 500.], [500., 500.]])
+AGENTS_POS_ORIGINAL = np.array([[50., 250.], [50., 250.]])
 AGENTS_POS_ORIGINAL.flags["WRITEABLE"] = False
 
 class Entity():
@@ -300,8 +300,12 @@ class PreyArena_v2(ParallelEnv):
         )
         for agent in self.agents:
             pygame.draw.circle(self.screen, agent.color, agent.pos, agent.radius)
+            if self.render_mode == "blob":
+                pygame.draw.circle(self.screen, pygame.color(255,255,255), agent.pos + agent.radius * 0.7 * agent.vel, agent.radius * 0.1)
         # TODO: Add googley eyes to agents
         # TODO: https://www.reddit.com/r/proceduralgeneration/comments/edpbv1/made_a_noise_circle_using_python_and_opensimplex/
+        
+
         
     def close(self):
         if self.renderOn:

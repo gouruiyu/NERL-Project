@@ -25,7 +25,7 @@ if __name__ == "__main__":
     parser.add_argument('--activation', type=str, default='tanh')
     parser.add_argument('--deterministic', type=bool, default=True)
     # Training parameters
-    parser.add_argument('--n_tournament', type=int, default=int(5e4))
+    parser.add_argument('--n_tournament', type=int, default=int(1e5))
     parser.add_argument('--n_rounds', type=int, default=8)
     parser.add_argument('--n_population', type=int, default=100)
     parser.add_argument('--mutation_std', type=float, default=0.1)
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     
     # Initialize wandb
     wandb.init(
-        project="prey-arena-tournament-gs-push",
+        project=args.expr_name,
         entity="ruiyg",
         config=vars(args)
     )
